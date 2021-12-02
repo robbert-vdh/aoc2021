@@ -11,8 +11,6 @@ license-file:       LICENSE
 author:             Robbert van der Helm
 maintainer:         mail@robbertvanderhelm.nl
 
-extra-source-files: CHANGELOG.md
-
 executable day-1
     hs-source-dirs:   app
     main-is:          Day1.hs
