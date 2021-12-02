@@ -9,15 +9,16 @@ main = do
   !input <- parse <$> readFile "inputs/day-2.txt"
 
   putStrLn "Part 1:"
-  print . mulState $! eval input initialState
+  print . mulState $! eval1 input initialState
 
 data State = State
   { position :: {-# UNPACK #-} !Int
-  , depth :: {-# UNPACK #-} !Int
+  , depth    :: {-# UNPACK #-} !Int
+  , aim      :: {-# UNPACK #-} !Int -- ^ Only used for part 0
   }
 
 initialState :: State
-initialState = State 0 0
+initialState = State 0 0 0
 
 -- Because they could only fit a single text box on the website
 mulState :: State -> Int
