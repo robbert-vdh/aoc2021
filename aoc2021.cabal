@@ -1,0 +1,21 @@
+cabal-version:      3.0
+name:               aoc2021
+version:            0.1.0.0
+synopsis:
+
+description:        Solutions for Advent of Code 2021
+homepage:
+
+license:            ISC
+license-file:       LICENSE
+author:             Robbert van der Helm
+maintainer:         mail@robbertvanderhelm.nl
+
+extra-source-files: CHANGELOG.md
+
+executable day-1
+    hs-source-dirs:   app
+    main-is:          Day1.hs
+    default-language: Haskell2010
+
+    build-depends:    base ^>=4.14.3.0
