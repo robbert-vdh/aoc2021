@@ -35,3 +35,13 @@ executable day-3
     main-is:          Day3.hs
 
     build-depends:    vector,
+
+executable day-4
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day4.hs
+
+    build-depends:    mtl,
+                      repa ^>=3.4,
+                      split,
+                      unordered-containers,
