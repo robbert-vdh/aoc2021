@@ -9,7 +9,7 @@ import Data.Array.Repa ((:.)(..), Array, DIM2, U, Z(..))
 import qualified Data.Array.Repa as R
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as S
-import Data.List (find)
+import Data.List (delete, find)
 import Data.List.Split
 import System.IO
 
@@ -18,7 +18,10 @@ main = do
   !input <- parse "inputs/day-4.txt"
 
   putStrLn "Part 1:"
-  print $! evalState (findVictor >>= winningScore) input
+  print $! evalState (findWinner >>= winningScore) input
+
+  putStrLn "\nPart 2:"
+  print $! evalState (findLastWinner >>= winningScore) input
 
 -- | Because has time to write all of this.
 pattern I2 :: Int -> Int -> DIM2
@@ -44,13 +47,13 @@ data BingoState = BingoState
   } deriving (Show)
 
 -- | Run the bingo game until someone wins the game (you've lost the game btw),
--- returning the victor. This doesn't consider ties.
-findVictor :: Bingo Board
-findVictor = do
+-- returning the winner. This doesn't consider ties.
+findWinner :: Bingo Board
+findWinner = do
   BingoState{..} <- get
   case find (isWinning drawnNumbers) boards of
     -- If someone has already won, great
-    Just victor -> return victor
+    Just winner -> return winner
     -- Otherwise, keep drawing numbers until someone wins
     Nothing -> do
       modify' $ \s -> s
@@ -60,7 +63,21 @@ findVictor = do
         , lastDrawnNumber  = head remainingNumbers
         }
 
-      findVictor
+      findWinner
+
+-- | Keep playing the game until only one board remains, that will be the last
+-- winning board.
+findLastWinner :: Bingo Board
+findLastWinner = do
+  winner <- findWinner
+  BingoState{..} <- get
+  case boards of
+    [lastBoard] -> return lastBoard
+    -- If there are more boards remaining, remove the winning board form the
+    -- list of boards and keep palying the game
+    _ -> do
+      modify' $ \s -> s { boards = delete winner boards }
+      findLastWinner
 
 -- | Calculate the score for the bingo game's winner.
 winningScore :: Board -> Bingo Int
