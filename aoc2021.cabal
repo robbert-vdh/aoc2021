@@ -45,3 +45,10 @@ executable day-4
                       repa ^>=3.4,
                       split,
                       unordered-containers,
+
+executable day-5
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day5.hs
+
+    build-depends:    vector,
