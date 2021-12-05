@@ -18,7 +18,10 @@ main = do
   !input <- parse <$> readFile "inputs/day-5.txt"
 
   putStrLn "Part 1:"
-  print . overlapCount $! drawLines input (initMatrix 0)
+  print . overlapCount $! drawLines False input (initMatrix 0)
+
+  putStrLn "\nPart 2:"
+  print . overlapCount $! drawLines True input (initMatrix 0)
 
 -- * Matrices
 -- WARNING: Dangerous amounts of overengineering ahead
@@ -71,9 +74,11 @@ data Point = Point Int Int
 -- The assumption here is that lines are always either horizontal or diagonal
 data Line = Line Point Point
 
-drawLines :: [Line] -> Matrix Int -> Matrix Int
-drawLines (Line (Point x1 y1) (Point x2 y2) : rest) (Matrix arr) =
-  drawLines rest $ Matrix (V.modify dewit arr)
+-- | Draw horizontal, vertical, and optionally also diagonal lines in the matrix
+-- by incrementing the positions matching wit the line's points by one.
+drawLines :: Bool -> [Line] -> Matrix Int -> Matrix Int
+drawLines withDiagonals (Line (Point x1 y1) (Point x2 y2) : rest) (Matrix !arr) =
+  drawLines withDiagonals rest $ Matrix (V.modify dewit arr)
   where
     -- The monadic action for actually incrementing the points, since there's no
     -- flipped version of 'V.modify' and doing that in place makes it pretty
@@ -93,9 +98,16 @@ drawLines (Line (Point x1 y1) (Point x2 y2) : rest) (Matrix arr) =
       () | yMin == yMax -> map (\x -> Shape yMin x) [xMin .. xMax]
       -- ...and vertical lines...
       () | xMin == xMax -> map (\y -> Shape y xMin) [yMin .. yMax]
+      -- ...and optionally also diagonal lines...
+      () | withDiagonals && (xMax - xMin == yMax - yMin) ->
+        let xDirection = signum (x2 - x1)
+            yDirection = signum (y2 - y1)
+            lineLength = xMax - xMin + 1
+         in map (\offset -> Shape (y1 + (offset * yDirection)) (x1 + (offset * xDirection)))
+                [0 .. lineLength - 1]
       -- ...and ignore the rest.
       _                 -> []
-drawLines [] arr = arr
+drawLines _ [] arr = arr
 
 -- | Count the number of points where at least two lines overlap.
 overlapCount :: Matrix Int -> Int
