@@ -7,6 +7,7 @@
 module Main where
 
 import Control.Monad (forM_)
+import Data.List (unfoldr)
 import Data.List.Split
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Vector.Unboxed.Mutable as MV
@@ -29,8 +30,16 @@ type Shape  = ShapeBase  1000 1000
 -- | A \'matrix\' with dimensions known at compile time. These dimensions are
 -- only used as hints to add some syntactic sugar for two dimensional indexing.
 data MatrixBase (rows :: Nat) (cols :: Nat) a = Matrix { flatten :: V.Vector a }
-  -- TODO: Print this like an actual matrix
-  deriving (Show)
+
+instance forall rows cols a. (KnownNat cols, V.Unbox a, Show a) => Show (MatrixBase rows cols a) where
+  show = unlines . map show . unfoldr splitRow . flatten
+    where
+      numCols = fromInteger $ natVal @cols undefined
+
+      splitRow :: V.Vector a -> Maybe (V.Vector a, V.Vector a)
+      splitRow remainder
+        | V.null remainder = Nothing
+        | otherwise        = Just $ V.splitAt numCols remainder
 
 -- | Indexes a 'MatrixBase' of the same size.
 data ShapeBase (rows :: Nat) (cols :: Nat) = Shape Int Int
