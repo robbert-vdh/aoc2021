@@ -51,4 +51,5 @@ executable day-5
     hs-source-dirs:   app
     main-is:          Day5.hs
 
-    build-depends:    vector,
+    build-depends:    split,
+                      vector,
