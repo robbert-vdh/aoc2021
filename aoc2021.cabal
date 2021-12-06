@@ -53,3 +53,10 @@ executable day-5
 
     build-depends:    split,
                       vector,
+
+executable day-6
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day6.hs
+
+    build-depends:    split,
