@@ -61,3 +61,6 @@ executable day-6
 
     build-depends:    containers,
                       split,
+                      -- For an additional vector based implementation
+                      criterion,
+                      vector,
