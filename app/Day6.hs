@@ -33,12 +33,20 @@ main = do
   putStrLn "\nPart 2 GOTTA GO FAST EDITION:"
   print . V.sum . evalVecSPEED 256 $! toVec input
 
+  -- And a faster, shift based vector implementation
+  putStrLn "\nPart 1 GOTTA GO FAST EDITION redux:"
+  print . V.sum . evalVecSPEEDRedux 80  $! toVecRedux input
+  putStrLn "\nPart 2 GOTTA GO FAST EDITION redux:"
+  print . V.sum . evalVecSPEEDRedux 256 $! toVecRedux input
+
   putStrLn "\nBenchmarks below:\n"
   defaultMain
-    [ bench "linked list, 80 days" $ nf (length . doTimes evalFish 80)  input
-    , bench "intmap, 256 days"     $ nf (sum . doTimes evalFishMap 256) $! toMap input
-    , bench "I AM SPEED, 80 days"  $ nf (V.sum . evalVecSPEED 80)  $! toVec input
-    , bench "I AM SPEED, 256 days" $ nf (V.sum . evalVecSPEED 256) $! toVec input
+    [ bench "linked list, 80 days"       $ nf (length . doTimes evalFish 80)       input
+    , bench "intmap, 256 days"           $ nf (sum . doTimes evalFishMap 256)      $! toMap input
+    , bench "I AM SPEED, 80 days"        $ nf (V.sum . evalVecSPEED 80)            $! toVec input
+    , bench "I AM SPEED, 256 days"       $ nf (V.sum . evalVecSPEED 256)           $! toVec input
+    , bench "I AM SPEED pt. 2, 80 days"  $ nf (V.sum . evalVecSPEEDRedux 80)       $! toVecRedux input
+    , bench "I AM SPEED pt. 2, 256 days" $ nf (V.sum . evalVecSPEEDRedux 256)      $! toVecRedux input
     ]
 
 doTimes :: (a -> a) -> Int -> a -> a
@@ -105,6 +113,24 @@ evalVecSPEED times = V.modify $ \mv -> replicateM_ times $ mapM_ (modDayInPlace 
           MV.unsafeModify mv (+ oldCount) 9
         else
           MV.unsafeModify mv (+ oldCount) (n - 1)
+
+toVecRedux :: [Int] -> Vector Int
+toVecRedux nums = V.modify (\mv -> mapM_ (MV.modify mv (+1)) nums) (V.replicate 9 0)
+
+-- | This also does everything in place as a single monadic action, but it just
+-- shifts all elements and then handles the new spawns.
+evalVecSPEEDRedux :: Int -> Vector Int -> Vector Int
+evalVecSPEEDRedux times = V.modify $ \mv -> replicateM_ times (modDayInPlace mv)
+  where
+    modDayInPlace :: MV.MVector s Int -> ST s ()
+    modDayInPlace mv = do
+      nRespawn <- MV.unsafeRead mv 0
+
+      -- Everyone grows one way older
+      MV.unsafeCopy (MV.unsafeSlice 0 8 mv) (MV.unsafeSlice 1 8 mv)
+      -- And day 0 fish will go back to day 6 and some new fish will spawn
+      MV.unsafeModify mv (+ nRespawn) 6
+      MV.unsafeWrite mv 8 nRespawn
 
 parse :: String -> [Int]
 parse = map read . splitOn ","
