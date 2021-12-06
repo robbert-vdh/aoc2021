@@ -59,4 +59,5 @@ executable day-6
     hs-source-dirs:   app
     main-is:          Day6.hs
 
-    build-depends:    split,
+    build-depends:    containers,
+                      split,
