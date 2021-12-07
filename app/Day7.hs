@@ -9,15 +9,26 @@ import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
 import Data.Ord (comparing)
 
+import Criterion.Main
+
 main :: IO ()
 main = do
   !input <- parse <$> readFile "inputs/day-7.txt"
+  let xMin  = minimum $ IM.keys input
+      xMean = meanPosition input
+      xMax  = maximum $ IM.keys input
 
   putStrLn "Part 1:"
-  print . snd $! minimizeLS (`l1Loss` input) 1 (minimum $ IM.keys input, meanPosition input, maximum $ IM.keys input)
+  print . snd $! minimizeLS (`l1Loss` input)         1 (xMin, xMean, xMax)
 
   putStrLn "\nPart 2:"
-  print . snd $! minimizeLS (`triangularLoss` input) 1 (minimum $ IM.keys input, meanPosition input, maximum $ IM.keys input)
+  print . snd $! minimizeLS (`triangularLoss` input) 1 (xMin, xMean, xMax)
+
+  putStrLn "\nBenchmarks below:\n"
+  defaultMain
+    [ bench "L1 loss"            $ nf (\i -> minimizeLS (`l1Loss` i)         1 (xMin, xMean, xMax)) input
+    , bench "triangular L1 loss" $ nf (\i -> minimizeLS (`triangularLoss` i) 1 (xMin, xMean, xMax)) input
+    ]
 
 -- | The number of crabs at each position, where the key is the position and the
 -- value is the number of crabs.
