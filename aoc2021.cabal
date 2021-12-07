@@ -64,3 +64,11 @@ executable day-6
                       -- For an additional vector based implementation
                       criterion,
                       vector,
+
+executable day-7
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day7.hs
+
+    build-depends:    containers,
+                      split,
