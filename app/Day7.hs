@@ -16,6 +16,9 @@ main = do
   putStrLn "Part 1:"
   print . snd $! minimizeLS (`l1Loss` input) 1 (minimum $ IM.keys input, meanPosition input, maximum $ IM.keys input)
 
+  putStrLn "\nPart 2:"
+  print . snd $! minimizeLS (`triangularLoss` input) 1 (minimum $ IM.keys input, meanPosition input, maximum $ IM.keys input)
+
 -- | The number of crabs at each position, where the key is the position and the
 -- value is the number of crabs.
 type Positions = IntMap Int
@@ -61,6 +64,16 @@ minimizeLS f epsilon startParams@(!xMin, !xMean, !xMax)
 -- predicted position.
 l1Loss :: Int -> Positions -> Int
 l1Loss prediction = getSum . IM.foldMapWithKey (\pos n -> Sum $ abs (prediction - pos) * n)
+
+-- | Compute the sum of the differences between each crab's position and the
+-- predicted position, when we should take the triangular number of the
+-- distance. Meaning, @3@ becomes @1 + 2 + 3@.
+triangularLoss :: Int -> Positions -> Int
+triangularLoss prediction = getSum . IM.foldMapWithKey (\pos n -> Sum $ (triangularNumber . abs $ prediction - pos) * n)
+  where
+    -- Taken from https://hackage.haskell.org/package/DPutils-0.1.1.0/docs/src/Math.TriangularNumbers.html#triangularNumber
+    triangularNumber :: Int -> Int
+    triangularNumber n = (n * (n + 1)) `div` 2
 
 -- | The horizontal positions for each crab as a mapping between positions and
 -- number of crabs.
