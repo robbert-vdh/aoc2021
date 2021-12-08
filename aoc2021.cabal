@@ -73,3 +73,12 @@ executable day-7
     build-depends:    containers,
                       split,
                       criterion,
+
+executable day-8
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day8.hs
+
+    build-depends:    split,
+                      vector,
+                      vector-algorithms,
