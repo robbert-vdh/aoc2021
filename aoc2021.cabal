@@ -79,6 +79,9 @@ executable day-8
     hs-source-dirs:   app
     main-is:          Day8.hs
 
+    -- The simulated annealing actually benefits from multithreading
+    ghc-options:      -threaded -rtsopts -with-rtsopts=-N12
+
     build-depends:    containers,
                       split,
                       vector,
@@ -86,3 +89,4 @@ executable day-8
                       -- annealing algorithm
                       hmatrix,
                       hmatrix-gsl,
+                      parallel,

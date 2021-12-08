@@ -1,10 +1,13 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ViewPatterns          #-}
 
 module Main where
 
+import Control.Parallel.Strategies
 import Data.Char
 import Data.Foldable
 import Data.List.Split (splitOn)
@@ -15,6 +18,8 @@ import Data.Monoid
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Vector as B
+import GHC.Conc (numCapabilities)
+import GHC.Generics (Generic)
 import Numeric.GSL.SimulatedAnnealing
 import qualified Numeric.LinearAlgebra as H
 
@@ -22,8 +27,13 @@ main :: IO ()
 main = do
   !input <- parse <$> readFile "inputs/day-8.txt"
 
-  let mappings      = map (fromJust . solveMapping) input
-      mappedOutputs = map mapDisplayOutputs mappings
+  -- The fun part is that doing this in parallel on a 12 core 24 thread CPU is
+  -- only twice as fast as when not using any parallelization, and with 24
+  -- threads it's 2.5 times slower. FFI calls require global locking, which is
+  -- probably what's slowing this down.
+  let chunkSize      = ceiling $ fromIntegral (length input) / (fromIntegral numCapabilities :: Float)
+      mappings       = map (fromJust . solveMapping) input
+      !mappedOutputs = map mapDisplayOutputs mappings `using` parListChunk chunkSize rdeepseq
 
   putStrLn "Part 1:"
   print . length . filter (`elem` [1, 4, 7, 8]) $ concat mappedOutputs
@@ -63,7 +73,7 @@ data Display = Display
     -- in 'patterns'.
   , outputs  :: B.Vector (Set Char)
   }
-  deriving (Show)
+  deriving (Show, Generic, NFData)
 
 -- | The solver state for solving the mappings within a display.
 data SolverState = SolverState
@@ -75,7 +85,7 @@ data SolverState = SolverState
     -- 'Display' to the actual letter of the segment.
   , charMapping    :: !(Map Char Char)
   }
-  deriving (Show)
+  deriving (Show, Generic, NFData)
 
 -- | The actions we can take in our solver. Swapping a mapping means swapping
 -- two values in either of the maps in 'SolverState'.
