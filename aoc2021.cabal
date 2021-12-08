@@ -79,6 +79,10 @@ executable day-8
     hs-source-dirs:   app
     main-is:          Day8.hs
 
-    build-depends:    split,
+    build-depends:    containers,
+                      split,
                       vector,
-                      vector-algorithms,
+                      -- Because I didn't feel like writing my own simulated
+                      -- annealing algorithm
+                      hmatrix,
+                      hmatrix-gsl,
