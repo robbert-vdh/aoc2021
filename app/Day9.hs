@@ -128,19 +128,22 @@ markBasins
     fillPoint :: (Ix2 -> (LocationStatus, Int)) -> (LocationStatus, Int)
     fillPoint get = case get (Ix2 0 0) of
       -- Heights of 9 are never part of a basin
-      (Unknown, 9)      -> (Invalid, 9)
-      (Unknown, height) ->
-        let neighbouringBasins = mapMaybe (basinIdx . fst . get) neighbourOffsets
+      (Unknown, 9)       -> (Invalid, 9)
+      (Unknown, height)  ->
+        let neighbouringBasins = mapMaybe (validBasinIdx height . get) neighbourOffsets
          in case neighbouringBasins of
+               -- NOTE: @[idx]@ gives the wrong result, so they probably expect
+               --       you do to this in a depth first manner starting from the
+               --       top left basin
                (idx : _) -> (Basin idx, height)
                _         -> (Unknown,   height)
       -- We only need to look at the unknown places, since we've already visited
       -- the other places in the matrix
-      old               -> old
+      old                -> old
 
-    basinIdx :: LocationStatus -> Maybe Int
-    basinIdx (Basin idx) = Just idx
-    basinIdx _           = Nothing
+    validBasinIdx :: Int -> (LocationStatus, Int) -> Maybe Int
+    validBasinIdx height (Basin idx, basinHeight) | basinHeight < height = Just idx
+    validBasinIdx _      _                                               = Nothing
 
 -- | Get the number of locations for each basin. The result is in the format
 -- @(basinIdx, count)@, with the biggest basin coming first.
