@@ -90,3 +90,14 @@ executable day-8
                       hmatrix,
                       hmatrix-gsl,
                       parallel,
+
+executable day-9
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day9.hs
+
+    ghc-options:      -threaded -rtsopts -with-rtsopts=-N
+
+    build-depends:    containers,
+                      -- Wicked! Wicked!
+                      massiv,
