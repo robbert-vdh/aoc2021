@@ -36,7 +36,7 @@ main = do
 --
 -- And how to find them with stencils.
 
--- | Mark each low point in the array. See below for the old, boring version.
+-- | Mark each low point in the array.
 findLowPoints :: (A.Manifest r Int) => Matrix r Int -> Matrix DW (Bool, Int)
 findLowPoints = A.mapStencil (A.Fill 10) (A.makeStencil (Sz2 3 3) (Ix2 1 1) markLowPoint)
   where
@@ -54,26 +54,6 @@ neighbourOffsets =
   , Ix2 0    1
   , Ix2 1    0
   ]
-
--- | Mark each low point in the array, the boring way. I didn't realize massiv
--- had stencils.
-findLowPoints' :: (A.Manifest r Int) => Matrix r Int -> Matrix D (Bool, Int)
-findLowPoints' arr = A.imap markLowPoint arr
-  where
-    Sz2 rows cols = A.size arr
-
-    markLowPoint :: Ix2 -> Int -> (Bool, Int)
-    markLowPoint (Ix2 y x) height =
-      let leftBorder   = x == 0
-          topBorder    = y == 0
-          rightBorder  = x == cols - 1
-          bottomBorder = y == rows - 1
-          isLowPoint =
-               (leftBorder   || height < (arr A.! Ix2 y       (x - 1)))
-            && (topBorder    || height < (arr A.! Ix2 (y - 1) x      ))
-            && (rightBorder  || height < (arr A.! Ix2 y       (x + 1)))
-            && (bottomBorder || height < (arr A.! Ix2 (y + 1) x      ))
-       in (isLowPoint, height)
 
 -- | Get the values of the low points. This is sequential, so it's separated
 -- from finding the low points.
