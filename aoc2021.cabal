@@ -98,6 +98,6 @@ executable day-9
 
     ghc-options:      -threaded -rtsopts -with-rtsopts=-N
 
-    build-depends:    containers,
+    build-depends:    deepseq,
                       -- Wicked! Wicked!
                       massiv,
