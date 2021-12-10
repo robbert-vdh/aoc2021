@@ -101,3 +101,8 @@ executable day-9
     build-depends:    deepseq,
                       -- Wicked! Wicked!
                       massiv,
+
+executable day-10
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day10.hs
