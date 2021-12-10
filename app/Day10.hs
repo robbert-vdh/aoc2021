@@ -3,6 +3,8 @@
 
 module Main where
 
+import Data.List
+import Data.Maybe
 
 
 main :: IO ()
@@ -11,6 +13,9 @@ main = do
 
   putStrLn "Part 1:"
   print (errorScore input)
+
+  putStrLn "\nPart 2:"
+  print (completionScore input)
 
 
 -- | A line is simply either a stack of delimiters, or a 'Left' value containing
@@ -23,6 +28,16 @@ data Delim = Paren | Square | Curly | Angular
 
 -- | A token in our input file, we only have opening and closing delimiters.
 data Token = Open Delim | Close Delim
+
+instance Show Token where
+  show (Open Paren)    = "("
+  show (Close Paren)   = ")"
+  show (Open Square)   = "["
+  show (Close Square)  = "]"
+  show (Open Curly)    = "{"
+  show (Close Curly)   = "}"
+  show (Open Angular)  = "<"
+  show (Close Angular) = ">"
 
 -- | Parse the input file to a list of lines that either contain a stack of
 -- unclosed delimiters, or a 'Nothing' if the line was not valid.
@@ -39,6 +54,24 @@ errorScore = sum . map lineScore
     lineScore (Left ((pSym -> Just (Close Curly))   : _)) = 1197
     lineScore (Left ((pSym -> Just (Close Angular)) : _)) = 25137
     lineScore _                                           = 0
+
+-- | Compute completion score from the incomplete lines in the list.
+completionScore :: [Line] -> Int
+completionScore = middle . mapMaybe lineScore
+  where
+    middle :: [Int] -> Int
+    middle []               = 0
+    middle (sort -> scores) = scores !! (length scores `div` 2)
+
+    lineScore :: Line -> Maybe Int
+    lineScore (Right delims) = Just $ foldl' (\acc d -> (acc * 5) + delimScore d) 0 delims
+    lineScore (Left _)       = Nothing
+
+    delimScore :: Delim -> Int
+    delimScore Paren   = 1
+    delimScore Square  = 2
+    delimScore Curly   = 3
+    delimScore Angular = 4
 
 pLine :: String -> Line
 pLine = go []
