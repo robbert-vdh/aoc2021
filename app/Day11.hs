@@ -18,7 +18,7 @@ main = do
   !input <- parse <$> readFile "inputs/day-11.txt"
 
   putStrLn "Part 1:"
-  print $! simulate 100 input
+  print $! simulateSteps 100 input
 
 
 type Energy = Int
@@ -34,12 +34,11 @@ data SimulationState = SimulationState
 
 -- | Run the simulation for @steps@ steps, returning the updated energy levels
 -- and the number of flashes that happened during the simulation.
-simulate :: A.Source r Energy => Int -> Matrix r Energy -> SimulationState
-simulate steps = execState (simulationStep steps) . SimulationState 0 . A.delay
+simulateSteps :: A.Source r Energy => Int -> Matrix r Energy -> SimulationState
+simulateSteps steps = execState (replicateM_ steps simulationStep) . SimulationState 0 . A.delay
 
-simulationStep :: Int -> State SimulationState ()
-simulationStep 0     = return ()
-simulationStep steps = do
+simulationStep :: State SimulationState ()
+simulationStep = do
   -- At the start of a simulation step the energy levels increase by 1
   modify $ \s -> s { grid = A.map (+ 1) $ grid s }
 
@@ -61,8 +60,6 @@ simulationStep steps = do
   newFlashes <- gets (countFlashes . grid)
   finalGrid  <- gets (resetGrid . grid)
   modify $ \s -> s { numFlashes = numFlashes s + newFlashes, grid = finalGrid }
-
-  simulationStep (steps - 1)
   where
     -- | When an adjacent octopus has an energy level greater than 9, increase
     -- that octopus' energy level by 1. This should be applied iteratively until
