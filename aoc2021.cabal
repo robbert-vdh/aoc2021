@@ -112,8 +112,6 @@ executable day-11
     hs-source-dirs:   app
     main-is:          Day11.hs
 
-    ghc-options:      -threaded -rtsopts -with-rtsopts=-N
-
     build-depends:    deepseq,
                       -- Jungle is massiv!
                       massiv,

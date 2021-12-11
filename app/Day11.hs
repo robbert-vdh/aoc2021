@@ -66,8 +66,8 @@ simulationStep = do
            -- Iteration can only happen on manifest arrays because we need to
            -- compare the old and the new values, hence computing to unboxed
            -- arrays
-           . A.iterateUntil (const $ A.eqArrays ((==) `on` snd)) (const $ A.computeP @U . doFlashes)
-           . A.computeP @U
+           . A.iterateUntil (const $ A.eqArrays ((==) `on` snd)) (const $ A.computeS @U . doFlashes)
+           . A.computeS @U
            . A.map (False,)
            $ grid s
     }
@@ -136,4 +136,4 @@ neighbourOffsets =
 
 -- | Read the input file to a matrix of energy levels.
 parse :: String -> Matrix U Energy
-parse = A.fromLists' A.Par . map (map digitToInt) . lines
+parse = A.fromLists' A.Seq . map (map digitToInt) . lines
