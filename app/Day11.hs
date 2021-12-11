@@ -18,13 +18,17 @@ main = do
   !input <- parse <$> readFile "inputs/day-11.txt"
 
   putStrLn "Part 1:"
-  print $! simulateSteps 100 input
+  print . numFlashes $! simulateSteps 100 input
+
+  putStrLn "\nPart 2:"
+  print . numSteps $! simulateUntilSync input
 
 
 type Energy = Int
 
 data SimulationState = SimulationState
   { numFlashes :: {-# UNPACK #-} !Int
+  , numSteps   :: {-# UNPACK #-} !Int
     -- The grid is kept in a delayed representation so we can actually use the
     -- state monad to modify it without constantly having to recompute it to a
     -- manifest array
@@ -35,7 +39,19 @@ data SimulationState = SimulationState
 -- | Run the simulation for @steps@ steps, returning the updated energy levels
 -- and the number of flashes that happened during the simulation.
 simulateSteps :: A.Source r Energy => Int -> Matrix r Energy -> SimulationState
-simulateSteps steps = execState (replicateM_ steps simulationStep) . SimulationState 0 . A.delay
+simulateSteps steps = execState (replicateM_ steps simulationStep) . SimulationState 0 0 . A.delay
+
+-- | Run the simulation until every octopus has just flashed. In other words,
+-- until all energy levels are 0.
+simulateUntilSync :: A.Source r Energy => Matrix r Energy -> SimulationState
+simulateUntilSync = execState go . SimulationState 0 0 . A.delay
+  where
+    go :: State SimulationState ()
+    go = do
+      simulationStep
+
+      isSynchronized <- gets (A.all (== 0) . grid)
+      unless isSynchronized go
 
 simulationStep :: State SimulationState ()
 simulationStep = do
@@ -53,13 +69,18 @@ simulationStep = do
            . A.iterateUntil (const $ A.eqArrays ((==) `on` snd)) (const $ A.computeP @U . doFlashes)
            . A.computeP @U
            . A.map (False,)
-           $ grid s }
+           $ grid s
+    }
 
   -- Finally, count the number of flashes, and reset the flashing octopi back to
   -- energy level 0
   newFlashes <- gets (countFlashes . grid)
   finalGrid  <- gets (resetGrid . grid)
-  modify $ \s -> s { numFlashes = numFlashes s + newFlashes, grid = finalGrid }
+  modify $ \s -> s
+    { numFlashes = numFlashes s + newFlashes
+    , numSteps   = numSteps s + 1
+    , grid       = finalGrid
+    }
   where
     -- | When an adjacent octopus has an energy level greater than 9, increase
     -- that octopus' energy level by 1. This should be applied iteratively until
