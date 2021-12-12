@@ -116,3 +116,14 @@ executable day-11
                       -- Jungle is massiv!
                       massiv,
                       mtl,
+
+executable day-12
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day12.hs
+
+    build-depends:    containers,
+                      hashable,
+                      mtl,
+                      split,
+                      unordered-containers,
