@@ -29,14 +29,17 @@ main = do
   !input <- parse <$> readFile "inputs/day-12.txt"
 
   putStrLn "Part 1:"
-  print . length . filter containsSmallCave . completePaths $ traverseAll input
+  print . length . filter containsSmallCave . completePaths $ traverseAll expandUnique input
+
+  putStrLn "\nPart 2:"
+  print . length . completePaths $ traverseAll expandMaybeTwice input
 
 
 -- | In the graph there are small caves (with lower case names) and big caves
 -- (with upper case names). Small caves can only be visited once, large caves
 -- can be visited as many times as necessary.
 data Node = BigCave String | SmallCave String
-  deriving (Eq, Show, Generic, Hashable)
+  deriving (Eq, Ord, Show, Generic, Hashable)
 
 instance IsString Node where
   fromString s@(c : _) | isUpper c = BigCave s
@@ -49,8 +52,10 @@ type Graph = HashMap Node [Node]
 
 data TraversalState = TraversalState
   { graph         :: !Graph
-    -- | The big caves that have already been visited.
-  , visited       :: !(HashSet Node)
+  -- I assumed you'd also need to find the shortest path at some point. Apparently  not.
+  --
+  --   -- | The big caves that have already been visited.
+  -- , visited       :: !(HashSet Node)
     -- | Paths that have not yet either died out or reached the end. These are
     -- traversed in breadth first order.
   , currentPaths  :: Seq (Seq Node)
@@ -59,17 +64,12 @@ data TraversalState = TraversalState
   }
 
 -- | Traverse the graph from the end until all paths have been found.
-traverseAll :: Graph -> TraversalState
-traverseAll = execState go . initialState
+traverseAll :: (TraversalState -> Seq Node -> [Node]) -> Graph -> TraversalState
+traverseAll expandPath = execState go . initialState
   where
     go :: State TraversalState ()
     go = do
-      -- In this version we aren't looking for the shortest path, so instead of
-      -- using the visited set all nodes that are not already in the current
-      -- path should be considered.
-      traversalStep $ \TraversalState{..} currentPath@(_ :|> currentNode) ->
-        filterNodes (S.fromList $ toList currentPath) (graph M.! currentNode)
-
+      traversalStep expandPath
       done <- gets (Seq.null . currentPaths)
       unless done go
 
@@ -77,9 +77,38 @@ traverseAll = execState go . initialState
     initialState g =
       let startKey   = "start"
           startPaths = Seq.fromList . map (\n -> [startKey, n]) $ g M.! startKey
-       in TraversalState g S.empty startPaths []
+       in TraversalState g startPaths []
 
--- | Filter a list of nodes based on a hashmap of visited nodes. Big caves can
+-- | Generate new nodes for a path for part 1, where small caves can only be
+-- visited once. In this version we aren't looking for the shortest path, so
+-- instead of using the visited set all nodes that are not already in the
+-- current path should be considered.
+expandUnique :: TraversalState -> Seq Node -> [Node]
+expandUnique TraversalState{..} ~currentPath@(_ :|> currentNode) =
+  filterNodes (S.fromList $ toList currentPath) (graph M.! currentNode)
+
+-- | The same as 'expandUnique', but a path may visit a single small cave twice
+-- unless this is the start cave.
+expandMaybeTwice :: TraversalState -> Seq Node -> [Node]
+expandMaybeTwice TraversalState{..} ~currentPath@(_ :|> currentNode) =
+  filterNodes visitedNodes (graph M.! currentNode)
+  where
+    -- The visited nodes in this path. If the path does not already contain two
+    -- visits of a single small cave, then this set will only contain the
+    -- starting node since every other node can still be visited.
+    visitedNodes =
+      let visitedSet = S.fromList (toList currentPath)
+       in if containsDuplicate (toList $ Seq.sort currentPath)
+            then visitedSet
+            else S.singleton "start"
+
+    -- | Find a duplicate small cave in a sorted list of nodes.
+    containsDuplicate :: [Node] -> Bool
+    containsDuplicate ((SmallCave x) : (SmallCave y) : _ ) | x == y = True
+    containsDuplicate (_             : y             : cs)          = containsDuplicate (y : cs)
+    containsDuplicate _                                             = False
+
+-- | Filter a list of nodes based on a set of visited nodes. Big caves can
 -- always be revisited.
 filterNodes :: HashSet Node -> [Node] -> [Node]
 filterNodes visited = filter $ \case
@@ -107,15 +136,15 @@ traversalStep expandPath = do
         else (currentPath :|>) <$> Seq.fromList (expandPath currentState currentPath)
 
   modify $ \s -> s
-    { visited       = S.insert currentNode visited
-    , currentPaths  = otherPaths >< newPaths
+    -- { visited       = S.insert currentNode visited
+    { currentPaths  = otherPaths >< newPaths
     , completePaths = if reachedEnd
         then currentPath : completePaths
         else completePaths
     }
 
 
--- | For part 1 t hey only want to count paths containing small caves. Not sure
+-- | For part 1 they only want to count paths containing small caves. Not sure
 -- why this is specified explicitly since at least with my input it's not
 -- possible to have a complete path that doesn't go through small caves.
 containsSmallCave :: Seq Node -> Bool
