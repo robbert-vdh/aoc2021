@@ -21,7 +21,7 @@ main = do
 
   putStrLn "\nPart 2:"
   let !sparseResult = doTimes (sparseInsertElements rules) 40 (toSparse template)
-      !sparseCounts = sortBy (comparing snd) . M.toList $ sparseTally sparseResult
+      !sparseCounts = sortBy (comparing snd) . M.toList $ sparseTally (head template, last template) sparseResult
   print $ snd (last sparseCounts) - snd (head sparseCounts)
 
 
@@ -74,60 +74,54 @@ tally = M.fromListWith (+) . map (,1)
 -- Thanks.
 
 type SparsePolymer = HashMap (Element, Element) Int
--- | There's probably a mathy way to not have to do this, but this compensation
--- map counts the number of times elements have been duplicated in the
--- 'SparsePolymer' because they belong to two keys.
-type Compensation  = HashMap Element            Int
 
 -- | We need to make everything sparse _again_. And this time there's no getting
 -- around it. This map contains the number of times these two-element sequences
--- occur. We also need to keep track of how many duplicates there are of an
--- element so we can compensate for it in the final tally.
-toSparse :: [Element] -> (SparsePolymer, Compensation)
-toSparse = go (M.empty, M.empty)
+-- occur.
+toSparse :: [Element] -> SparsePolymer
+toSparse = go M.empty
   where
-    -- When y is counted twice, put it in the compensation map for the final
-    -- tallies
-    go (!m, !c) (x : y : z : rest) = go (M.insertWith (+) (x, y) 1 m, M.insertWith (+) y 1 c) (y : z : rest)
-    go (!m, !c) (x : y : rest)     = go (M.insertWith (+) (x, y) 1 m, c)                      (y : rest)
-    go (!m, !c) _                  = (m, c)
+    go !m (x : y : rest) = go (M.insertWith (+) (x, y) 1 m) (y : rest)
+    go !m _              = m
 
 -- | The same as 'insertElements', but for the sparse set.
-sparseInsertElements :: Rules -> (SparsePolymer, Compensation) -> (SparsePolymer, Compensation)
-sparseInsertElements rules (template, compensation) =
-  let (templateDelta, compensationDelta) = sparseInsertions rules template
-   in (M.unionWith (+) template templateDelta, M.unionWith (+) compensation compensationDelta)
+sparseInsertElements :: Rules -> SparsePolymer -> SparsePolymer
+sparseInsertElements rules template =
+  M.unionWith (+) template (sparseInsertions rules template)
 
 -- | The equivalent of 'insertions', but now returning deltas for the
 -- 'SparsePolymer' map.
-sparseInsertions :: Rules -> SparsePolymer -> (SparsePolymer, Compensation)
-sparseInsertions rules = foldl' go (M.empty, M.empty) . M.toList
+sparseInsertions :: Rules -> SparsePolymer -> SparsePolymer
+sparseInsertions rules = foldl' go M.empty . M.toList
   where
-    go :: (SparsePolymer, Compensation) -> ((Element, Element), Int) -> (SparsePolymer, Compensation)
-    go (!m, !c) ((x, y), count)
+    go :: SparsePolymer -> ((Element, Element), Int) -> SparsePolymer
+    go !m ((x, y), count)
       | Just e <- M.lookup (x, y) rules
         -- This is idempotent when the pair is empty and the count is zero so it
         -- doesn't matter, but we'd still be wasting work
       , count > 0
-      = ( foldl' (\m' (k, v) -> M.insertWith (+) k v m') m
-            [ ((x, y), negate count)
-            , ((x, e), count)
-            , ((e, y), count)
-            ]
-          -- Compensate for the new duplicate elements
-        , M.insertWith (+) e count c
-        )
+      = foldl' (\m' (k, v) -> M.insertWith (+) k v m') m
+          [ ((x, y), negate count)
+          , ((x, e), count)
+          , ((e, y), count)
+          ]
       | otherwise
-      = (m, c)
+      = m
 
 
-sparseTally :: (SparsePolymer, Compensation) -> HashMap Element Int
-sparseTally (template, compensation)
-  = M.unionWith (+) (M.map negate compensation)
+-- | Every character except for the first and the last character is duplicated,
+-- so we just divide the total counts by two and then add the first and last
+-- character back.
+--
+-- Git blame this for a more roundabout version that kept track of duplicate
+-- character counts and compensated with that.
+sparseTally :: (Char, Char) -> SparsePolymer -> HashMap Element Int
+sparseTally (firstChar, lastChar)
+  = M.unionWith (+) (M.fromList [(firstChar, 1), (lastChar, 1)])
+  . M.map (`div` 2)
   . M.fromListWith (+)
   . concatMap (\((x, y), count) -> [(x, count), (y, count)])
   . M.toList
-  $ template
 
 
 -- * Parsing
