@@ -135,3 +135,11 @@ executable day-13
 
     build-depends:    massiv,
                       split,
+
+executable day-14
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day14.hs
+
+    build-depends:    split,
+                      unordered-containers,
