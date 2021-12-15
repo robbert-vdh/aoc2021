@@ -143,3 +143,15 @@ executable day-14
 
     build-depends:    split,
                       unordered-containers,
+
+executable day-15
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day15.hs
+
+    build-depends:    containers,
+                      hashable,
+                      pqueue,
+                      massiv,
+                      mtl,
+                      unordered-containers,
