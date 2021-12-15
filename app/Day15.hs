@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE RecordWildCards    #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications   #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main where
@@ -26,6 +27,9 @@ main = do
 
   putStrLn "Part 1:"
   print $! evalState findPath (initialState input)
+
+  putStrLn "\nPart 2:"
+  print $! evalState findPath (initialState $ expandGraph input)
 
 
 -- * A* search
@@ -102,6 +106,16 @@ findPath = do
         }
 
       findPath
+
+-- * Part 2
+
+-- | Expand the graph for part 2 by tiling it and increasing the risk levels for
+-- each tile.
+expandGraph :: Graph -> Graph
+expandGraph initial =
+  let expandedY = A.computeP @U $ A.concat' 1 (map (A.+. initial)   [0 .. 4])
+      expandedX = A.computeP @U $ A.concat' 2 (map (A.+. expandedY) [0 .. 4])
+   in A.computeP $ A.map (\n -> ((n - 1) `mod` 9) + 1) expandedX
 
 
 -- * Parsing
