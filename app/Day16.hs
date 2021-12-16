@@ -16,6 +16,9 @@ main = do
   putStrLn "Part 1:"
   print (sumVersions input)
 
+  putStrLn "\nPart 2:"
+  print (eval input)
+
 -- * Part 1
 
 -- | A straight up catamorphism for summing the versions because who has time to
@@ -27,18 +30,36 @@ sumVersions (Packet v b) =
     Operator _ subPackets -> sum $ map sumVersions subPackets
 
 
+-- * Part 2
+
+-- | Evaluate the expression in the packet
+eval :: Packet -> Int
+eval (Packet _ (Literal n))                   = n
+eval (Packet _ (Operator Sum subPackets))     = sum      $ map eval subPackets
+eval (Packet _ (Operator Product subPackets)) = product  $ map eval subPackets
+eval (Packet _ (Operator Minimum subPackets)) = minimum  $ map eval subPackets
+eval (Packet _ (Operator Maximum subPackets)) = maximum  $ map eval subPackets
+eval (Packet _ (Operator GreaterThan [x, y])) = fromEnum $ eval x > eval y
+eval (Packet _ (Operator LessThan [x, y]))    = fromEnum $ eval x < eval y
+eval (Packet _ (Operator Equal [x, y]))       = fromEnum $ eval x == eval y
+eval (Packet _ (Operator t subPackets)) =
+  error $ "Invalid operator " <> show t <> " arguments: " <> show subPackets
+
 -- * Parsing
 --
 -- Parsing will be the main thing today. Luckily, we're using Haskell.
 
 type Parser = Parsec String ()
-type OperatorType = Int
 
 data Packet = Packet { version :: Int, body :: PacketBody }
   deriving (Show)
+
 data PacketBody
   = Literal Int
   | Operator OperatorType [Packet]
+  deriving (Show)
+
+data OperatorType = Sum | Product | Minimum | Maximum | GreaterThan | LessThan | Equal
   deriving (Show)
 
 -- | Parse a single packet (which may contain additional packets)
@@ -51,9 +72,16 @@ pPacketBody :: Parser PacketBody
 pPacketBody = do
   packetType <- pBinUint 3
   case packetType of
-    4            -> pPacketLiteral
+    4 -> pPacketLiteral
     -- Anything that's doesn't have packet type 4 is an operator
-    operatorType -> pPacketOperator operatorType
+    0 -> pPacketOperator Sum
+    1 -> pPacketOperator Product
+    2 -> pPacketOperator Minimum
+    3 -> pPacketOperator Maximum
+    5 -> pPacketOperator GreaterThan
+    6 -> pPacketOperator LessThan
+    7 -> pPacketOperator Equal
+    n -> parserFail $ "Unknown operator type " <> show n
 
 -- | Parses a packet for a literal number. This packet contains groups of 4 bits
 -- that should all be concatenated and converted to a number.
@@ -68,7 +96,7 @@ pPacketLiteral = do
 
 -- | Parse an operator packet that can contain zero or more other packets. The
 -- type has already been parsed, so it's passed here to this function.
-pPacketOperator :: Int -> Parser PacketBody
+pPacketOperator :: OperatorType -> Parser PacketBody
 pPacketOperator operatorType = Operator operatorType <$> pSubPackets
   where
     pSubPackets = do
@@ -89,7 +117,7 @@ pPacketOperator operatorType = Operator operatorType <$> pSubPackets
         '1' -> do
           numSubPackets <- pBinUint 11
           count numSubPackets pPacket
-        _ -> error "This wasn't in our agreement!"
+        _ -> parserFail "This wasn't in our agreement!"
 
 -- | Parse a zero or a one.
 pBinDigit :: Parser Char
