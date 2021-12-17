@@ -66,7 +66,7 @@ bruteforceBy :: ([((Int, Int), Int)] -> a) -> Target -> a
 bruteforceBy f target@Target{..}
   = f
   $ mapMaybe (\p -> (p,) <$> hitsTarget target p)
-    [(x, y) | x <- [1 .. right], y <- [bottom .. abs bottom * 10]]
+    [(x, y) | x <- [1 .. right], y <- [bottom .. abs bottom]]
 
 -- | The penalty for the solver. This is negative the maximum Y-coordinate
 -- unless the trajectory would not hit the target area, in which case it is the
