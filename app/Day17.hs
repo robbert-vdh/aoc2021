@@ -16,10 +16,14 @@ main :: IO ()
 main = do
   !input <- parse <$> readFile "inputs/day-17.txt"
 
-  putStrLn "\nPart 1:"
   putStrLn $ "Target: " <> show input
-  print . hitsTarget input $! fancySolve input
-  -- print $! bruteforce input
+
+  putStrLn "\nPart 1:"
+  -- print . hitsTarget input $! fancySolve input
+  print $! bruteforce input
+
+  putStrLn "\nPart 2:"
+  print $! bruteforceBy length input
 
 
 -- | The target area.
@@ -56,10 +60,13 @@ fancySolve target =
 -- | Just exhaustively try all options to find starting velocity that results in
 -- highest reached Y-coordinate.
 bruteforce :: Target -> ((Int, Int), Int)
-bruteforce target@Target{..}
-  = maximumBy (comparing snd)
+bruteforce = bruteforceBy (maximumBy (comparing snd))
+
+bruteforceBy :: ([((Int, Int), Int)] -> a) -> Target -> a
+bruteforceBy f target@Target{..}
+  = f
   $ mapMaybe (\p -> (p,) <$> hitsTarget target p)
-    [(x, y) | x <- [1 .. right], y <- [top .. abs bottom * 10]]
+    [(x, y) | x <- [1 .. right], y <- [bottom .. abs bottom * 10]]
 
 -- | The penalty for the solver. This is negative the maximum Y-coordinate
 -- unless the trajectory would not hit the target area, in which case it is the
