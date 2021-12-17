@@ -162,3 +162,13 @@ executable day-16
     main-is:          Day16.hs
 
     build-depends:    parsec,
+
+executable day-17
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day17.hs
+
+    build-depends:    parsec,
+                      -- It's simulated annealing time again!
+                      hmatrix,
+                      hmatrix-gsl,
