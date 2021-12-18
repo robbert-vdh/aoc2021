@@ -172,3 +172,10 @@ executable day-17
                       -- It's simulated annealing time again!
                       hmatrix,
                       hmatrix-gsl,
+
+executable day-18
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day18.hs
+
+    build-depends:    parsec,
