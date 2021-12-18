@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
@@ -16,9 +16,14 @@ main = do
   putStrLn "Part 1:"
   print . magnitude . sumReduce $ input
 
+  putStrLn "\nPart 2:"
+  print . maximum . map (magnitude . sumReduce) $ [[x, y] | x <- input, y <- input, x /= y]
+
+
 -- * Part 1
 
 data Tree a = Single a | Pair !(Tree a) !(Tree a)
+  deriving (Eq)
 
 instance Show a => Show (Tree a) where
   show (Single a) = "[" <> show a <> "]"
@@ -36,13 +41,13 @@ magnitude (Pair l r) = (magnitude l * 3) + (magnitude r * 2)
 sumReduce :: [Tree Int] -> Tree Int
 sumReduce = foldl1' addReduce
 
--- | Add the trees I main snailfish numbers and then perform the reduction.
+-- | Add the trees- I mean snailfish numbers and then perform the reduction.
 addReduce :: Tree Int -> Tree Int -> Tree Int
 addReduce !l !r = reduce (Pair l r)
 
 data Action a
-  = -- | Nothing happened during reduction, stop when the final node returns this.
-    None
+    -- | Nothing happened during reduction, stop when the final node returns this.
+  = None
     -- | A reduction action has already been performed.
   | Reduced
     -- | Additions to the single elements to the left and the right of the
