@@ -179,3 +179,11 @@ executable day-18
     main-is:          Day18.hs
 
     build-depends:    parsec,
+
+executable day-19
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day19.hs
+
+    build-depends:    containers,
+                      parsec,
