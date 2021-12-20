@@ -189,3 +189,10 @@ executable day-19
 
     build-depends:    containers,
                       parsec,
+
+executable day-20
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day20.hs
+
+    build-depends:    massiv,
