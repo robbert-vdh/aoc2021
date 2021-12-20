@@ -4,6 +4,8 @@ module Main where
 
 import qualified Control.Applicative as A
 import Data.IntMap.Strict (IntMap)
+import Data.List
+import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import qualified Data.Set as S
 import Text.Parsec hiding (parse)
@@ -50,9 +52,13 @@ data ScannerConfig = ScannerConfig
   deriving (Show)
 type Orientation = (Int, Int, Int)
 
--- | All 64 possible orientations.
+-- | All 64 possible orientations, filtered down to 24-non equivalent
+-- orientations.
 orientations :: [Orientation]
-orientations = [(rx, ry, rz) | rx <- [0 .. 3], ry <- [0 .. 3], rz <- [0 .. 3]]
+orientations = sort . M.elems . M.fromList . reverse $ map (\o -> (rotate o testPoint, o)) allOrientations
+  where
+    testPoint = Point 1 2 3
+    allOrientations = [(rx, ry, rz) | rx <- [0 .. 3], ry <- [0 .. 3], rz <- [0 .. 3]]
 
 -- | Rotate a point around the origin using the specified orientation. The
 -- rotation happens in the order of the axes, but as long as this process is
