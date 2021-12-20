@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns    #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module Main where
 
@@ -16,10 +17,14 @@ import qualified Text.Parsec as Parsec
 
 main :: IO ()
 main = do
-  !input <- parse <$> readFile "inputs/day-19.txt"
+  !scanners <- parse <$> readFile "inputs/day-19.txt"
 
   putStrLn "Part 1:"
-  print . S.size $! solve input
+  let (!mappings, !solvedPoints) = solve scanners
+  print (S.size solvedPoints)
+
+  putStrLn "\nPart 2:"
+  print . maximum . pairwiseDistances $ backprojectScanners mappings
 
 
 -- * Part 1
@@ -113,12 +118,13 @@ matchScanners (ScannerData origin) (ScannerData target) = findMaybe matchWithOri
 
 -- ** Solution
 
--- | Reconstruct a set of points relative to the first scanner.
-solve :: [ScannerData] -> Set Point
-solve [] = S.empty
+-- | Reconstruct a set of points relative to the first scanner. Also return the
+-- mappings since we need them for part 2 and I'm too tired to refactor this.
+solve :: [ScannerData] -> (IntMap (Int, ScannerConfig), Set Point)
+solve [] = (IM.empty, S.empty)
 solve scanners =
-  let !matchedScanners = iterativelyMatch 0 (IM.singleton 0 (0, ScannerConfig (0, 0, 0) (Point 0 0 0)))
-   in S.unions $ map (backproject matchedScanners) [0 .. numScanners - 1]
+  let !mappings = iterativelyMatch 0 (IM.singleton 0 (0, ScannerConfig (0, 0, 0) (Point 0 0 0)))
+   in (mappings, S.unions $ map (backproject scanners mappings) [0 .. numScanners - 1])
   where
     numScanners = length scanners
 
@@ -143,23 +149,45 @@ solve scanners =
                                           , scannerIdx `IM.notMember` mappings
                                           , Just config <- [matchScanners (scanners !! startIdx) (scanners !! scannerIdx)]]
 
-    -- | Rotate and translate the points from scanner @n@ such that their
-    -- orientation matches with scanner 0.
-    backproject :: IntMap (Int, ScannerConfig) -> Int -> Set Point
-    backproject mappings scannerIdx =
-      let ScannerData scanner = scanners !! scannerIdx
-          (_, backprojected) = until (\(mappedTo, _) -> mappedTo == 0) (uncurry (backproject' mappings)) (scannerIdx, scanner)
-       in backprojected
+-- | Rotate and translate the points from scanner @n@ such that their
+-- orientation matches with scanner 0.
+backproject :: [ScannerData] -> IntMap (Int, ScannerConfig) -> Int -> Set Point
+backproject scanners mappings scannerIdx =
+  let ScannerData scanner = scanners !! scannerIdx
+      (_, backprojected) = until (\(mappedTo, _) -> mappedTo == 0) (uncurry (backproject' mappings)) (scannerIdx, scanner)
+    in backprojected
 
+-- | Backproject the set of points that are relative to scanner
+-- @relativeIdx@ using the mappings, returning reoriented scanner data and
+-- the index of the scanner this data is aligned to. This can be repeated
+-- until they are aligned with scanner 0.
+backproject' :: IntMap (Int, ScannerConfig) -> Int -> Set Point -> (Int, Set Point)
+backproject' mappings relativeIdx scanner =
+  let (mappedTo, ScannerConfig{..}) = mappings IM.! relativeIdx
+    in (mappedTo, S.map (translate offset . rotate orientation) scanner)
 
-    -- | Backproject the set of points that are relative to scanner
-    -- @relativeIdx@ using the mappings, returning reoriented scanner data and
-    -- the index of the scanner this data is aligned to. This can be repeated
-    -- until they are aligned with scanner 0.
-    backproject' :: IntMap (Int, ScannerConfig) -> Int -> Set Point -> (Int, Set Point)
-    backproject' mappings relativeIdx scanner =
-      let (mappedTo, ScannerConfig{..}) = mappings IM.! relativeIdx
-       in (mappedTo, S.map (translate offset . rotate orientation) scanner)
+-- * Part 2
+
+-- | Calculate the pairwise Manhattan distances for all of the points in the
+-- set.
+pairwiseDistances :: Set Point -> [Int]
+pairwiseDistances (S.toList -> points) =
+  [abs (rx - lx) + abs (ry - ly) + abs (rz - lz) | p1@(Point lx ly lz) <- points
+                                                 , p2@(Point rx ry rz) <- points
+                                                 , p1 /= p2]
+
+-- | Calculate the positions of all scanners relative to scanner 0.
+--
+-- Sorry for this, I just wanted to get this over with.
+backprojectScanners :: IntMap (Int, ScannerConfig) -> Set Point
+backprojectScanners mappings = S.fromList . IM.elems $ flip IM.map mappings $ \(mappedTo, config) ->
+   head
+   $ S.toList
+   $ snd
+   $ until (\(mappedTo', _) -> mappedTo' == 0) (uncurry (backproject' mappings))
+           -- Backprojecting the offset to the first scanner's location gets you
+           -- a set of all of the scanner's locations
+           (mappedTo, S.singleton (offset config))
 
 
 -- * Parsing
