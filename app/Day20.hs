@@ -17,9 +17,14 @@ main = do
   putStrLn "Part 1:"
   print . A.sum $ applyTimes 2 lut input
 
+  putStrLn "\nPart 2:"
+  print . A.sum $ applyTimes 50 lut input
+
 -- | And why does this work? I don't know.
-applyTimes :: (A.Manifest r1 Int) => Int -> Vector r1 Int -> Matrix U Int -> Matrix D Int
-applyTimes n lut input = removePadding n (iterate (enhance lut) input !! n)
+applyTimes :: (A.Manifest r1 Int) => Int -> Vector r1 Int -> Matrix U Int -> Matrix U Int
+applyTimes n lut input
+  | n <= 2    = A.compute $ removePadding (n * n) (iterate (enhance lut) input !! n)
+  | otherwise = applyTimes (n - 2) lut (applyTimes 2 lut input)
 
 
 -- * Part 1
@@ -42,7 +47,7 @@ enhance lut
 -- | Remove n rows of excess padding added in 'enhance'. This needs to be done
 -- after the (sequential) enhancing.
 removePadding :: (A.Source r a, A.Size r) => Int -> Matrix r a -> Matrix D a
-removePadding n arr = A.extract' (Ix2 (n * 2) (n * 2)) (A.size arr - Sz2 (n * 4) (n * 4)) arr
+removePadding n arr = A.extract' (Ix2 n n) (A.size arr - Sz2 (n * 2) (n * 2)) arr
 
 
 -- * Parsing
