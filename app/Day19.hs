@@ -1,13 +1,16 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Main where
 
 import qualified Control.Applicative as A
 import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as IM
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import qualified Data.Set as S
+import Debug.Trace
 import Text.Parsec hiding (parse)
 import qualified Text.Parsec as Parsec
 
@@ -16,10 +19,7 @@ main = do
   !input <- parse <$> readFile "inputs/day-19.txt"
 
   putStrLn "Part 1:"
-  -- print input
-  mapM_ (print . matchScanners (head input)) (tail input)
-  -- TODO: Keep matching until the relative orientation and translation to the
-  --       origin are known for all points
+  print . S.size $! solve input
 
 
 -- * Part 1
@@ -32,11 +32,6 @@ newtype ScannerData = ScannerData (Set Point)
 data Point = Point Int Int Int
   deriving (Show, Eq, Ord)
 
-data Solution = Solution
-  { scanners :: ScannerData
-  , relativeOrientations :: IntMap ScannerConfig
-  }
-  deriving (Show)
 data ScannerConfig = ScannerConfig
   { -- | THe orientation relative to scanner zero. This orientation consits of
     -- three integers in the range @[0, 3]@, which correspond to the multiples
@@ -79,14 +74,17 @@ rotate (rx, ry, rz) (Point x y z) =
     rotateTimes :: Int -> (Int, Int) -> (Int, Int)
     rotateTimes n p = iterate rotate90 p !! n
 
+translate :: Point -> Point -> Point
+translate (Point dx dy dz) (Point x y z) = Point (x + dx) (y + dy) (z + dz)
+
+findMaybe :: Foldable t => (a -> Maybe b) -> t a -> Maybe b
+findMaybe f = foldl (\m x -> m A.<|> f x) Nothing
+
 -- | Try to match rotate and transpose two scanners such that at least twelve
 -- points overlap.
 matchScanners :: ScannerData -> ScannerData -> Maybe ScannerConfig
 matchScanners (ScannerData origin) (ScannerData target) = findMaybe matchWithOrientation orientations
   where
-    findMaybe :: Foldable t => (a -> Maybe b) -> t a -> Maybe b
-    findMaybe f = foldl (\m x -> m A.<|> f x) Nothing
-
     -- | Rotate all of @target@'s points using an orientation, and then try to
     -- figure out which point in @target@ matches with the first point in
     -- @origin@.
@@ -107,11 +105,61 @@ matchScanners (ScannerData origin) (ScannerData target) = findMaybe matchWithOri
     -- other points match.
     yeeeeet :: Set Point -> Point -> Point -> Maybe Point
     yeeeeet rotatedTarget _targetPoint@(Point tx ty tz) _originPoint@(Point ox oy oz) =
-      let (dx, dy, dz) = (ox - tx, oy - ty, oz - tz)
-          translatedTarget = S.map (\(Point x y z) -> Point (x + dx) (y + dy) (z + dz)) rotatedTarget
+      let delta = Point (ox - tx) (oy - ty) (oz - tz)
+          translatedTarget = S.map (translate delta) rotatedTarget
        in if S.size (S.intersection origin translatedTarget) >= 12
-             then Just (Point dx dy dz)
+             then Just delta
              else Nothing
+
+-- ** Solution
+
+-- | Reconstruct a set of points relative to the first scanner.
+solve :: [ScannerData] -> Set Point
+solve [] = S.empty
+solve scanners =
+  let !matchedScanners = iterativelyMatch 0 (IM.singleton 0 (0, ScannerConfig (0, 0, 0) (Point 0 0 0)))
+   in S.unions $ map (backproject matchedScanners) [0 .. numScanners - 1]
+  where
+    numScanners = length scanners
+
+    -- Keep trying to match scanners to scanners in the map until all scanners
+    -- have been matched.
+    iterativelyMatch :: Int -> IntMap (Int, ScannerConfig) -> IntMap (Int, ScannerConfig)
+    iterativelyMatch startIdx mappings
+      | IM.size mappings == numScanners
+      = mappings
+      -- Try matching from the first scanner again after performing a cycle. We
+      -- don't do this _every_ time to avoid unnecessarily rechecking the same
+      -- scanner over and over again.
+      | startIdx >= numScanners
+      = trace ("Matched " <> show (IM.size mappings) <> " scanners after this cycle") iterativelyMatch 0 mappings
+      | startIdx `IM.notMember` mappings
+      = iterativelyMatch (startIdx + 1) mappings
+      | otherwise
+      = iterativelyMatch (startIdx + 1)
+      . IM.union mappings
+      . IM.fromList
+      $ [(scannerIdx, (startIdx, config)) | scannerIdx <- [0 .. numScanners - 1]
+                                          , scannerIdx `IM.notMember` mappings
+                                          , Just config <- [matchScanners (scanners !! startIdx) (scanners !! scannerIdx)]]
+
+    -- | Rotate and translate the points from scanner @n@ such that their
+    -- orientation matches with scanner 0.
+    backproject :: IntMap (Int, ScannerConfig) -> Int -> Set Point
+    backproject mappings scannerIdx =
+      let ScannerData scanner = scanners !! scannerIdx
+          (_, backprojected) = until (\(mappedTo, _) -> mappedTo == 0) (uncurry (backproject' mappings)) (scannerIdx, scanner)
+       in backprojected
+
+
+    -- | Backproject the set of points that are relative to scanner
+    -- @relativeIdx@ using the mappings, returning reoriented scanner data and
+    -- the index of the scanner this data is aligned to. This can be repeated
+    -- until they are aligned with scanner 0.
+    backproject' :: IntMap (Int, ScannerConfig) -> Int -> Set Point -> (Int, Set Point)
+    backproject' mappings relativeIdx scanner =
+      let (mappedTo, ScannerConfig{..}) = mappings IM.! relativeIdx
+       in (mappedTo, S.map (translate offset . rotate orientation) scanner)
 
 
 -- * Parsing

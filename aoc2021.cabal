@@ -185,5 +185,7 @@ executable day-19
     hs-source-dirs:   app
     main-is:          Day19.hs
 
+    ghc-options:      -threaded -rtsopts -with-rtsopts=-N
+
     build-depends:    containers,
                       parsec,
