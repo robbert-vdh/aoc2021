@@ -20,7 +20,12 @@ main = do
   putStrLn "\nPart 2:"
   print . A.sum $ applyTimes 50 lut input
 
--- | And why does this work? I don't know.
+-- | So yeah uh...the problem with the input file is that the first character is
+-- a @#@, so when still using '.' as padding in the 'enhance' function this will
+-- cause the border to fold inwards every two iterations. The solution is to
+-- either use the correct character for the padding, or to just add excess
+-- padding and to chop it off after every second iteration. That's what we're
+-- doing here.
 applyTimes :: (A.Manifest r1 Int) => Int -> Vector r1 Int -> Matrix U Int -> Matrix U Int
 applyTimes n lut input
   | n <= 2    = A.compute $ removePadding (n * n) (iterate (enhance lut) input !! n)
