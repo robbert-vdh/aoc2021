@@ -61,7 +61,7 @@ parse :: String -> (Vector U Int, Matrix U Int)
 parse = go . lines
   where
     go :: [String] -> (Vector U Int, Matrix U Int)
-    go (lut : _ : image) = (toInts $ A.fromList A.Seq lut, toInts $ A.fromLists' A.Seq image)
+    go (lut : _ : image) = (toInts $ A.fromList A.Par lut, toInts $ A.fromLists' A.Par image)
     go _ = error "This doesn't look quite right"
 
     toInts :: A.Index ix => A.Array U ix Char -> A.Array U ix Int
