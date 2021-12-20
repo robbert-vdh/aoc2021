@@ -7,7 +7,7 @@
 module Main where
 
 import Data.Bits
-import Data.Massiv.Array (Ix2 (..), Sz (..), Vector, Matrix, U)
+import Data.Massiv.Array (Ix2 (..), Sz (..), Vector, Matrix, D, U)
 import qualified Data.Massiv.Array as A
 
 main :: IO ()
@@ -15,7 +15,11 @@ main = do
   (!lut, !input) <- parse <$> readFile "inputs/day-20.txt"
 
   putStrLn "Part 1:"
-  print . A.sum . enhance lut $ enhance lut input
+  print . A.sum $ applyTimes 2 lut input
+
+-- | And why does this work? I don't know.
+applyTimes :: (A.Manifest r1 Int) => Int -> Vector r1 Int -> Matrix U Int -> Matrix D Int
+applyTimes n lut input = removePadding n (iterate (enhance lut) input !! n)
 
 
 -- * Part 1
@@ -26,14 +30,19 @@ enhance lut
   . A.map (lut A.!)
   . A.compute @U
     -- This padding means that everything grows by one pixel in each direction
-  . A.applyStencil (A.Padding (Sz2 2 2) (Sz2 2 2) $ A.Fill 0) binarySumStencil
+  . A.applyStencil (A.Padding (Sz2 4 4) (Sz2 4 4) $ A.Fill 0) binarySumStencil
   where
     binarySumStencil = A.makeStencil (Sz2 3 3) (Ix2 1 1) $ \get ->
       -- These indices are in decending order because the bits should be read in
       -- big endian order
-      sum $ zipWith (\offset idx -> get offset `shiftL` idx) offsets [8, 7 .. 0]
+      sum $ zipWith (\offset idx -> get offset `unsafeShiftL` idx) offsets [8, 7 .. 0]
 
     offsets = [Ix2 y x | y <- [-1 .. 1], x <- [-1 .. 1]]
+
+-- | Remove n rows of excess padding added in 'enhance'. This needs to be done
+-- after the (sequential) enhancing.
+removePadding :: (A.Source r a, A.Size r) => Int -> Matrix r a -> Matrix D a
+removePadding n arr = A.extract' (Ix2 (n * 2) (n * 2)) (A.size arr - Sz2 (n * 4) (n * 4)) arr
 
 
 -- * Parsing
