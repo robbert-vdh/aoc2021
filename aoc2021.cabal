@@ -204,7 +204,11 @@ executable day-21
     hs-source-dirs:   app
     main-is:          Day21.hs
 
-    build-depends:    microlens,
+    ghc-options:      -threaded -rtsopts -with-rtsopts=-N
+
+    build-depends:    hashable,
+                      microlens,
                       microlens-mtl,
                       microlens-th,
                       mtl,
+                      unordered-containers,

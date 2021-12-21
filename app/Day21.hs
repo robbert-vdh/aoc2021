@@ -1,11 +1,17 @@
 {-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE DeriveAnyClass  #-}
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Main where
 
 import Control.Monad.State.Strict
+import Data.Hashable (Hashable)
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as M
+import Data.List
+import GHC.Generics (Generic)
 import Lens.Micro
 import Lens.Micro.Mtl
 import Lens.Micro.TH
@@ -20,7 +26,7 @@ data GameState = GameState
     -- | The next roll on the dice, goes back to 1 after rolling 100.
   , _nextRoll    :: {-# UNPACK #-} !Int
   }
-  deriving (Show)
+  deriving (Eq, Show, Generic, Hashable)
 
 makeLenses ''GameState
 
@@ -31,6 +37,9 @@ main = do
 
   putStrLn "Part 1:"
   print $! part1Score input
+
+  putStrLn "\nPart 2:"
+  print (quantumGame input)
 
 
 -- * Part 1
@@ -68,11 +77,59 @@ gameStep = do
       posDelta = sum rolls
 
   -- Move the player forward, and add their new position to their score
-  pos . _player %= (\p -> ((p - 1 + posDelta) `mod` 10) + 1)
+  pos . _player %= \p -> ((p - 1 + posDelta) `mod` 10) + 1
   newPos <- use (pos . _player)
   score . _player += newPos
 
   player1Turn %= not
+
+
+-- * Part 2
+
+-- | Instead of rolling the dice three times and playing until a player has 1000
+-- points, consider the outcomes 1, 2 and 3 for each dice and return how many
+-- times a player wins with every possible path leading to a player winning with
+-- 21 points.
+--
+-- I initially implemented this without dynamic programming because even though
+-- it's slow it's still only a depth first traversal so that should be fine, but
+-- somehow that was causing the RTS to never free any heap memory.
+quantumGame :: GameState -> (Int, Int)
+quantumGame startingState = evalState (quantumGame' startingState) M.empty
+  where
+    quantumGame' :: GameState -> State (HashMap GameState (Int, Int)) (Int, Int)
+    quantumGame' currentState
+      | currentState ^. (score . _1) >= 21 = return (1, 0)
+      | currentState ^. (score . _2) >= 21 = return (0, 1)
+      | otherwise = do
+          cachedResult <- gets (M.lookup currentState)
+          case cachedResult of
+            Just cachedScore -> return cachedScore
+            -- Compute the score if we haven't seen this game configuration before
+            Nothing -> do
+              -- The player rolls a [1, 3] dice three times, and every possible outcome gets
+              -- evaluated. This means that every dice roll causes the game to be split into
+              -- 27 new games.
+              scores <- forM (map sum $ replicateM 3 [1, 2, 3]) $ \quantumOutcome -> do
+                quantumGame' $ flip execState currentState $ do
+                      p1Turn <- use player1Turn
+
+                      let _player :: Lens (Int, Int) (Int, Int) Int Int
+                          _player = if p1Turn then _1 else _2
+
+                      -- Move the player forward, and add their new position to their score
+                      pos . _player %= \p -> ((p - 1 + quantumOutcome) `mod` 10) + 1
+                      !newPos <- use (pos . _player)
+                      score . _player += newPos
+
+                      player1Turn %= not
+
+              let result = foldl1' sumScores scores
+              modify $! M.insert currentState result
+              return result
+
+    sumScores :: (Int, Int) -> (Int, Int) -> (Int, Int)
+    sumScores (p1, p2) (p1', p2') = (p1 + p1', p2 + p2')
 
 
 -- * Parsing
