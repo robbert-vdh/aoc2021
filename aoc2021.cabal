@@ -212,3 +212,11 @@ executable day-21
                       microlens-th,
                       mtl,
                       unordered-containers,
+
+executable day-22
+    import:           base
+    hs-source-dirs:   app
+    main-is:          Day22.hs
+
+    build-depends:    containers,
+                      parsec,
